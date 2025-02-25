@@ -1,17 +1,44 @@
 import os
 import numpy as np
-import traci
+
+# import traci
 import sumolib
 import gym
 from resco_benchmark.traffic_signal import Signal
+import os
+import sys
+
+if "SUMO_HOME" in os.environ:
+    sys.path.append(os.path.join(os.environ["SUMO_HOME"], "tools"))
+import traci
 
 
 class MultiSignal(gym.Env):
-    def __init__(self, run_name, map_name, net, state_fn, reward_fn, route=None, gui=False, end_time=3600,
-                 step_length=10, yellow_length=4, step_ratio=1, max_distance=200, lights=(), log_dir='/', libsumo=False,
-                 warmup=0, gymma=False):
+    def __init__(
+        self,
+        run_name,
+        map_name,
+        net,
+        state_fn,
+        reward_fn,
+        route=None,
+        gui=False,
+        end_time=3600,
+        step_length=10,
+        yellow_length=4,
+        step_ratio=1,
+        max_distance=200,
+        lights=(),
+        log_dir="/",
+        libsumo=False,
+        warmup=0,
+        gymma=False,
+        tr=None,
+    ):
         self.libsumo = libsumo
-        self.gymma = gymma  # gymma expects sequential list of states/rewards instead of dict
+        self.gymma = (
+            gymma  # gymma expects sequential list of states/rewards instead of dict
+        )
         print(map_name, net, state_fn.__name__, reward_fn.__name__)
         self.log_dir = log_dir
         self.net = net
@@ -26,24 +53,43 @@ class MultiSignal(gym.Env):
         self.step_length = step_length
         self.yellow_length = yellow_length
         self.step_ratio = step_ratio
-        self.connection_name = run_name + '-' + map_name + '---' + state_fn.__name__ + '-' + reward_fn.__name__
+        if tr is not None:
+            algoname = run_name.split("-")[0]
+            run_name = f"{algoname}-tr{tr}"
+
+        self.connection_name = (
+            run_name
+            + "-"
+            + map_name
+            + "---"
+            + state_fn.__name__
+            + "-"
+            + reward_fn.__name__
+        )
         self.map_name = map_name
 
         # Run some steps in the simulation with default light configurations to detect phases
         if self.route is not None:
-            if 'grid4x4' in self.route:
-                self.route += '/grid4x4'
-            elif 'arterial4x4' in self.route:
-                self.route += '/arterial4x4'
-            sumo_cmd = [sumolib.checkBinary('sumo'), '-n', net, '-r', self.route + '_1.rou.xml', '--no-warnings', 'True']
+            if "grid4x4" in self.route:
+                self.route += "/grid4x4"
+            elif "arterial4x4" in self.route:
+                self.route += "/arterial4x4"
+            sumo_cmd = [
+                sumolib.checkBinary("sumo"),
+                "-n",
+                net,
+                "-r",
+                self.route + "_1.rou.xml",
+                "--no-warnings",
+                "True",
+            ]
         else:
-            sumo_cmd = [sumolib.checkBinary('sumo'), '-c', net, '--no-warnings', 'True']
-        print('[DEBUG]:', sumo_cmd)
+            sumo_cmd = [sumolib.checkBinary("sumo"), "-c", net, "--no-warnings", "True"]
         if self.libsumo:
             traci.start(sumo_cmd)
             self.sumo = traci
         else:
-            traci.start(sumo_cmd, label = self.connection_name)
+            traci.start(sumo_cmd, label=self.connection_name)
             self.sumo = traci.getConnection(self.connection_name)
         self.signal_ids = self.sumo.trafficlight.getIDList()
         print("lights", len(self.signal_ids), self.signal_ids)
@@ -52,16 +98,19 @@ class MultiSignal(gym.Env):
         self.phases = {
             lightID: [
                 p
-                for p in self.sumo.trafficlight.getAllProgramLogics(lightID)[0].getPhases()
+                for p in self.sumo.trafficlight.getAllProgramLogics(lightID)[
+                    0
+                ].getPhases()
                 if "y" not in p.state and "g" in p.state.lower()
             ]
             for lightID in self.signal_ids
         }
 
-
         self.signals = dict()
 
-        self.all_ts_ids = lights if len(lights) > 0 else self.sumo.trafficlight.getIDList()
+        self.all_ts_ids = (
+            lights if len(lights) > 0 else self.sumo.trafficlight.getIDList()
+        )
         self.ts_starter = len(self.all_ts_ids)
         self.signal_ids = []
 
@@ -70,7 +119,9 @@ class MultiSignal(gym.Env):
         self.observation_space = list()
         self.action_space = list()
         for ts in self.all_ts_ids:
-            self.signals[ts] = Signal(self.map_name, self.sumo, ts, self.yellow_length, self.phases[ts])
+            self.signals[ts] = Signal(
+                self.map_name, self.sumo, ts, self.yellow_length, self.phases[ts]
+            )
         for ts in self.all_ts_ids:
             self.signals[ts].signals = self.signals
             self.signals[ts].observe(self.step_length, self.max_distance)
@@ -82,7 +133,8 @@ class MultiSignal(gym.Env):
             o_shape = gym.spaces.Box(low=-np.inf, high=np.inf, shape=o_shape)
             self.ts_order.append(ts)
             self.observation_space.append(o_shape)
-            if ts == 'top_mgr' or ts == 'bot_mgr': continue  # Not a traffic signal
+            if ts == "top_mgr" or ts == "bot_mgr":
+                continue  # Not a traffic signal
             self.action_space.append(gym.spaces.Discrete(len(self.phases[ts])))
 
         self.n_agents = self.ts_starter
@@ -91,22 +143,34 @@ class MultiSignal(gym.Env):
         self.metrics = []
         self.wait_metric = dict()
 
-        if not self.libsumo: traci.switch(self.connection_name)
+        if not self.libsumo:
+            traci.switch(self.connection_name)
         traci.close()
-        self.connection_name = run_name + '-' + map_name + '-' + str(len(lights)) + '-' + state_fn.__name__ + '-' + reward_fn.__name__
-        if not os.path.exists(log_dir+self.connection_name):
-            os.makedirs(log_dir+self.connection_name)
+        self.connection_name = (
+            run_name
+            + "-"
+            + map_name
+            + "-"
+            + str(len(lights))
+            + "-"
+            + state_fn.__name__
+            + "-"
+            + reward_fn.__name__
+        )
+        if not os.path.exists(log_dir + "/" + self.connection_name):
+            os.makedirs(log_dir + "/" + self.connection_name)
         self.sumo_cmd = None
-        print('Connection ID', self.connection_name)
+        print("Connection ID", self.connection_name)
 
     def step_sim(self):
         # The monaco scenario expects .25s steps instead of 1s, account for that here.
         for _ in range(self.step_ratio):
             self.sumo.simulationStep()
-        
+
     def reset(self):
         if self.run != 0:
-            if not self.libsumo: traci.switch(self.connection_name)
+            if not self.libsumo:
+                traci.switch(self.connection_name)
             traci.close()
             self.save_metrics()
         self.metrics = []
@@ -116,19 +180,33 @@ class MultiSignal(gym.Env):
         # Start a new simulation
         self.sumo_cmd = []
         if self.gui:
-            self.sumo_cmd.append(sumolib.checkBinary('sumo-gui'))
-            self.sumo_cmd.append('--start')
+            self.sumo_cmd.append(sumolib.checkBinary("sumo-gui"))
+            self.sumo_cmd.append("--start")
         else:
-            self.sumo_cmd.append(sumolib.checkBinary('sumo'))
+            self.sumo_cmd.append(sumolib.checkBinary("sumo"))
         if self.route is not None:
-            self.sumo_cmd += ['-n', self.net, '-r', self.route + '_'+str(self.run)+'.rou.xml']
+            self.sumo_cmd += [
+                "-n",
+                self.net,
+                "-r",
+                self.route + "_" + str(self.run) + ".rou.xml",
+            ]
         else:
-            self.sumo_cmd += ['-c', self.net]
-        self.sumo_cmd += ['--random', '--time-to-teleport', '-1', '--tripinfo-output',
-                          os.path.join(self.log_dir, self.connection_name, 'tripinfo_' + str(self.run) + '.xml'),
-                          '--tripinfo-output.write-unfinished',
-                          '--no-step-log', 'True',
-                          '--no-warnings', 'True']
+            self.sumo_cmd += ["-c", self.net]
+        self.sumo_cmd += [
+            "--random",
+            "--time-to-teleport",
+            "-1",
+            "--tripinfo-output",
+            os.path.join(
+                self.log_dir, self.connection_name, "tripinfo_" + str(self.run) + ".xml"
+            ),
+            "--tripinfo-output.write-unfinished",
+            "--no-step-log",
+            "True",
+            "--no-warnings",
+            "True",
+        ]
         if self.libsumo:
             traci.start(self.sumo_cmd)
             self.sumo = traci
@@ -140,13 +218,16 @@ class MultiSignal(gym.Env):
             self.step_sim()
 
         # 'Start' only signals set for control, rest run fixed controllers
-        if self.run % 30 == 0 and self.ts_starter < len(self.all_ts_ids): self.ts_starter += 1
+        if self.run % 30 == 0 and self.ts_starter < len(self.all_ts_ids):
+            self.ts_starter += 1
         self.signal_ids = []
         for i in range(self.ts_starter):
             self.signal_ids.append(self.all_ts_ids[i])
 
         for ts in self.signal_ids:
-            self.signals[ts] = Signal(self.map_name, self.sumo, ts, self.yellow_length, self.phases[ts])
+            self.signals[ts] = Signal(
+                self.map_name, self.sumo, ts, self.yellow_length, self.phases[ts]
+            )
             self.wait_metric[ts] = 0.0
         for ts in self.signal_ids:
             self.signals[ts].signals = self.signals
@@ -193,8 +274,8 @@ class MultiSignal(gym.Env):
             for ts in self.ts_order:
                 obss.append(observations[ts])
                 rww.append(rewards[ts])
-            return obss, rww, [done], {'eps': self.run}
-        return observations, rewards, done, {'eps': self.run}
+            return obss, rww, [done], {"eps": self.run}
+        return observations, rewards, done, {"eps": self.run}
 
     def calc_metrics(self, rewards):
         queue_lengths = dict()
@@ -203,32 +284,37 @@ class MultiSignal(gym.Env):
             signal = self.signals[signal_id]
             queue_length, max_queue = 0, 0
             for lane in signal.lanes:
-                queue = signal.full_observation[lane]['queue']
-                if queue > max_queue: max_queue = queue
+                queue = signal.full_observation[lane]["queue"]
+                if queue > max_queue:
+                    max_queue = queue
                 queue_length += queue
             queue_lengths[signal_id] = queue_length
             max_queues[signal_id] = max_queue
         self.metrics.append({
-            'step': self.sumo.simulation.getTime(),
-            'reward': rewards,
-            'max_queues': max_queues,
-            'queue_lengths': queue_lengths
+            "step": self.sumo.simulation.getTime(),
+            "reward": rewards,
+            "max_queues": max_queues,
+            "queue_lengths": queue_lengths,
         })
 
     def save_metrics(self):
-        log = os.path.join(self.log_dir, self.connection_name+ os.sep + 'metrics_' + str(self.run) + '.csv')
-        print('saving', log)
-        with open(log, 'w+') as output_file:
+        log = os.path.join(
+            self.log_dir,
+            self.connection_name + os.sep + "metrics_" + str(self.run) + ".csv",
+        )
+        print("saving", log)
+        with open(log, "w+") as output_file:
             for line in self.metrics:
-                csv_line = ''
-                for metric in ['step', 'reward', 'max_queues', 'queue_lengths']:
-                    csv_line = csv_line + str(line[metric]) + ', '
-                output_file.write(csv_line + '\n')
+                csv_line = ""
+                for metric in ["step", "reward", "max_queues", "queue_lengths"]:
+                    csv_line = csv_line + str(line[metric]) + ", "
+                output_file.write(csv_line + "\n")
 
-    def render(self, mode='human'):
+    def render(self, mode="human"):
         pass
 
     def close(self):
-        if not self.libsumo: traci.switch(self.connection_name)
+        if not self.libsumo:
+            traci.switch(self.connection_name)
         traci.close()
         self.save_metrics()
