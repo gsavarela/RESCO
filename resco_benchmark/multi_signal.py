@@ -67,7 +67,6 @@ class MultiSignal(gym.Env):
             + reward_fn.__name__
         )
         self.map_name = map_name
-
         # Run some steps in the simulation with default light configurations to detect phases
         if self.route is not None:
             if "grid4x4" in self.route:
@@ -85,12 +84,10 @@ class MultiSignal(gym.Env):
             ]
         else:
             sumo_cmd = [sumolib.checkBinary("sumo"), "-c", net, "--no-warnings", "True"]
-        if self.libsumo:
-            traci.start(sumo_cmd)
-            self.sumo = traci
-        else:
-            traci.start(sumo_cmd, label=self.connection_name)
-            self.sumo = traci.getConnection(self.connection_name)
+
+        traci.start(sumo_cmd)
+        self.sumo = traci
+
         self.signal_ids = self.sumo.trafficlight.getIDList()
         print("lights", len(self.signal_ids), self.signal_ids)
 
@@ -207,12 +204,8 @@ class MultiSignal(gym.Env):
             "--no-warnings",
             "True",
         ]
-        if self.libsumo:
-            traci.start(self.sumo_cmd)
-            self.sumo = traci
-        else:
-            traci.start(self.sumo_cmd, label=self.connection_name)
-            self.sumo = traci.getConnection(self.connection_name)
+        traci.start(self.sumo_cmd)
+        self.sumo = traci
 
         for _ in range(self.warmup):
             self.step_sim()
