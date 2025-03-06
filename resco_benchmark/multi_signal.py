@@ -11,6 +11,8 @@ import sys
 if "SUMO_HOME" in os.environ:
     sys.path.append(os.path.join(os.environ["SUMO_HOME"], "tools"))
 import traci
+from sumolib.net import readNet
+from operator import itemgetter
 
 
 class MultiSignal(gym.Env):
@@ -311,3 +313,54 @@ class MultiSignal(gym.Env):
             traci.switch(self.connection_name)
         traci.close()
         self.save_metrics()
+
+    def get_ts_neighbors(self, distance_type="hops"):
+        """
+        Args:
+            distance_type (str): hops or cost, default: hops.
+
+        Returns:
+            neighbors (dict):the keys are tuples of ts_ids, values are the distances.
+        """
+        if distance_type not in ("hops", "cost"):
+            raise ValueError(
+                f'distance_type should be in ("hops", "cost"). Got {distance_type}'
+            )
+        filename = str(self.net).split(".")[0]
+        net = readNet(f"{filename}.net.xml")
+
+        # edges adjancent to TLS
+        edges = [*filter(lambda x: x.getTLS() is not None, net.getEdges())]
+        # edges bound to a TLS
+        ts_to_edges = {
+            ts_id: [*filter(lambda x: x.getTLS().getID() == ts_id, edges)]
+            for ts_id in self.all_ts_ids
+        }
+
+        n_agents = len(self.all_ts_ids)
+        res = {}
+        for i in range(n_agents - 1):
+            orig = self.all_ts_ids[i]
+            for j in range(i + 1, n_agents):
+                dest = self.all_ts_ids[j]
+                edges_i = ts_to_edges[orig]
+                edges_j = ts_to_edges[dest]
+
+                weighted_paths = [
+                    net.getOptimalPath(ei, ej) for ej in edges_j for ei in edges_i
+                ]
+                weighted_paths = [*filter(lambda x: x[1] is not None, weighted_paths)]
+                path, weight = sorted(weighted_paths, key=itemgetter(1))[0]
+
+                # Test if there is another tls in path
+                tls_in_path = map(
+                    lambda x: x.getTLS().getID(),
+                    filter(lambda x: x.getTLS() is not None, path),
+                )
+                test_set = set(tls_in_path)
+                control_set = set([orig, dest])
+                if test_set == control_set:
+                    res[(orig, dest)] = (
+                        len(path) - 1 if distance_type == "hops" else weight
+                    )
+        return res

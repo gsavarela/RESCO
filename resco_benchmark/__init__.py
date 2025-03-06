@@ -56,6 +56,7 @@ algs = [
     "maddpg_ns",
     "qmix_ns",
     "vdn_ns",
+    "dvdn_ns",
 ]
 for alg in algs:
     for map in maps:
