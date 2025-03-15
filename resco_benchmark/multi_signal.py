@@ -36,6 +36,7 @@ class MultiSignal(gym.Env):
         warmup=0,
         gymma=False,
         tr=None,
+        save_logs=True,
     ):
         self.libsumo = libsumo
         self.gymma = (
@@ -59,6 +60,7 @@ class MultiSignal(gym.Env):
             algoname = run_name.split("-")[0]
             run_name = f"{algoname}-tr{tr}"
 
+        self.save_logs = save_logs
         self.connection_name = (
             run_name
             + "-"
@@ -156,8 +158,9 @@ class MultiSignal(gym.Env):
             + "-"
             + reward_fn.__name__
         )
-        if not os.path.exists(log_dir + "/" + self.connection_name):
-            os.makedirs(log_dir + "/" + self.connection_name)
+        if self.save_logs:
+            if not os.path.exists(log_dir + "/" + self.connection_name):
+                os.makedirs(log_dir + "/" + self.connection_name)
         self.sumo_cmd = None
         print("Connection ID", self.connection_name)
 
@@ -171,7 +174,8 @@ class MultiSignal(gym.Env):
             if not self.libsumo:
                 traci.switch(self.connection_name)
             traci.close()
-            self.save_metrics()
+            if self.save_logs:
+                self.save_metrics()
         self.metrics = []
 
         self.run += 1
@@ -192,20 +196,26 @@ class MultiSignal(gym.Env):
             ]
         else:
             self.sumo_cmd += ["-c", self.net]
+
         self.sumo_cmd += [
             "--random",
             "--time-to-teleport",
             "-1",
-            "--tripinfo-output",
-            os.path.join(
-                self.log_dir, self.connection_name, "tripinfo_" + str(self.run) + ".xml"
-            ),
-            "--tripinfo-output.write-unfinished",
             "--no-step-log",
             "True",
             "--no-warnings",
             "True",
         ]
+        if self.save_logs:
+            self.sumo_cmd += [
+                "--tripinfo-output",
+                os.path.join(
+                    self.log_dir,
+                    self.connection_name,
+                    "tripinfo_" + str(self.run) + ".xml",
+                ),
+                "--tripinfo-output.write-unfinished",
+            ]
         traci.start(self.sumo_cmd)
         self.sumo = traci
 

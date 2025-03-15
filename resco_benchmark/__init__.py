@@ -94,5 +94,6 @@ for alg in algs:
                     "warmup": 0,
                     "gymma": True,
                     "tr": None,
+                    "save_logs": True,
                 },
             )
