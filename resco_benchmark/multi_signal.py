@@ -158,9 +158,9 @@ class MultiSignal(gym.Env):
             + "-"
             + reward_fn.__name__
         )
-        if self.save_logs:
-            if not os.path.exists(log_dir + "/" + self.connection_name):
-                os.makedirs(log_dir + "/" + self.connection_name)
+        save_path = log_dir + "/" + self.connection_name
+        if self.save_logs and not os.path.exists(save_path):
+            os.makedirs(save_path)
         self.sumo_cmd = None
         print("Connection ID", self.connection_name)
 
@@ -174,8 +174,7 @@ class MultiSignal(gym.Env):
             if not self.libsumo:
                 traci.switch(self.connection_name)
             traci.close()
-            if self.save_logs:
-                self.save_metrics()
+            self.save_metrics()
         self.metrics = []
 
         self.run += 1
@@ -303,6 +302,8 @@ class MultiSignal(gym.Env):
         })
 
     def save_metrics(self):
+        if not self.save_logs:
+            return
         log = os.path.join(
             self.log_dir,
             self.connection_name + os.sep + "metrics_" + str(self.run) + ".csv",
