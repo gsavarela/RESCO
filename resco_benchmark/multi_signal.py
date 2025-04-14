@@ -72,22 +72,22 @@ class MultiSignal(gym.Env):
         )
         self.map_name = map_name
         # Run some steps in the simulation with default light configurations to detect phases
-        if self.route is not None:
-            if "grid4x4" in self.route:
-                self.route += "/grid4x4"
-            elif "arterial4x4" in self.route:
-                self.route += "/arterial4x4"
-            sumo_cmd = [
-                sumolib.checkBinary("sumo"),
-                "-n",
-                net,
-                "-r",
-                self.route + "_1.rou.xml",
-                "--no-warnings",
-                "True",
-            ]
-        else:
-            sumo_cmd = [sumolib.checkBinary("sumo"), "-c", net, "--no-warnings", "True"]
+        # if self.route is not None:
+        #     # if "grid4x4" in self.route:
+        #     #     self.route += "/grid4x4"
+        #     # elif "arterial4x4" in self.route:
+        #     #     self.route += "/arterial4x4"
+        #     sumo_cmd = [
+        #         sumolib.checkBinary("sumo"),
+        #         "-n",
+        #         net,
+        #         "-r",
+        #         self.route + "_1.rou.xml",
+        #         "--no-warnings",
+        #         "True",
+        #     ]
+        # else:
+        sumo_cmd = [sumolib.checkBinary("sumo"), "-c", net, "--no-warnings", "True"]
 
         traci.start(sumo_cmd)
         self.sumo = traci
