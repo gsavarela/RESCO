@@ -36,6 +36,7 @@ maps = [
     "ingolstadt1",
     "ingolstadt7",
     "ingolstadt21",
+    "lisbon6",
 ]
 algs = [
     "ia2c",

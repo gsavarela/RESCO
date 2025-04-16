@@ -46,6 +46,7 @@ def main():
             "cologne1",
             "cologne3",
             "cologne8",
+            "lisbon6",
         ],
     )
     ap.add_argument("--pwd", type=str, default=os.path.dirname(__file__))
