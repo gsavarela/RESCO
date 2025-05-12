@@ -23,16 +23,13 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     include_package_data=True,
     install_requires=[
-        'numpy>=1.16.5',
-        'matplotlib>=3.5.2',
-        'torch>=1.8.1',
-        'gym<=0.22.0',  # PFRL needs an update for future versions
-        'pfrl>=0.2.1',
-        'traci'
+        "numpy>=1.16.5",
+        "matplotlib>=3.5.2",
+        "torch>=1.8.1",
+        "gym<=0.22.0",  # PFRL needs an update for future versions
+        "pfrl>=0.2.1",
+        "traci",
     ],
-    extras_require={
-        "fma2c": ['tensorflow==1.15.5'],
-        "libsumo": ['libsumo']
-    },
-    python_requires=">=3.7.4",
+    extras_require={"fma2c": ["tensorflow==1.15.5"], "libsumo": ["libsumo"]},
+    python_requires="==3.7.5",
 )
