@@ -1,16 +1,15 @@
 import os
 import numpy as np
-
-# import traci
-import sumolib
-import gym
-from resco_benchmark.traffic_signal import Signal
-import os
 import sys
 
 if "SUMO_HOME" in os.environ:
     sys.path.append(os.path.join(os.environ["SUMO_HOME"], "tools"))
+
 import traci
+import sumolib
+import gym
+from resco_benchmark.traffic_signal import Signal
+
 from sumolib.net import readNet
 from operator import itemgetter
 
