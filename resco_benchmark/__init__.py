@@ -39,7 +39,9 @@ maps = [
     "lisbon6",
 ]
 algs = [
+    "centralV",
     "ia2c",
+    "inda2c",
     "ippo",
     "maa2c",
     "mappo",
