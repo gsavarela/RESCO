@@ -60,6 +60,7 @@ algs = [
     "qmix_ns",
     "vdn_ns",
     "dvdn_ns",
+    "dnaa2c",
 ]
 for alg in algs:
     for map in maps:
